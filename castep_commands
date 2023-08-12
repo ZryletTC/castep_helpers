@@ -1,0 +1,91 @@
+#
+# Useful commands for setting up, running, and checking castep calculations
+#
+
+# Show the final energies in all subfolders
+alias castep_results='grep "Final energy" */*.castep'
+
+# Show my slurm jobs
+alias myjobs='squeue -u $USER'
+            
+# Count positions of atoms in a .cell file
+function countcell() {
+    echo $(($(sed -n '/POSITIONS_FRAC/,/POSITIONS_FRAC/p' "$@" | wc -l) - 2))
+}
+
+# Check cutoff energies in subfolders
+alias checkenergies='grep cut */*.param'
+
+# Check k spacing in subfolders
+alias checkspacing='grep spacing */*.cell'
+                
+# Set up an e_conv folder
+## Make subfolders
+function make_subfolder_range(){
+    for i in $(seq $1 $2); do
+        mkdir $i
+    done
+}
+
+## Softlink .cell files (takes filename)
+function link_cells() {
+    for d in */; do
+        ln -s ../$1.cell $d/$1.cell
+    done
+}
+
+## Copy .param files then delete original (takes filename)
+function dist_params() {
+    for d in */; do
+        cp $1.param $d/$1.param
+    done
+    rm $1.param
+}
+
+## Set the appropriate cutoff energies in .param files 
+function set_energies() {
+    for d in */; do
+        sed -i "s/cut_off_energy  = 4/cut_off_energy  = $d/" $d/*.param
+    done
+}
+
+## Combined:
+function setup_econv() {
+    if [[ $# != 1 && $# != 3 ]] ; then
+        echo "Incorrect number of arguments passed!"
+        echo "Usage: setup_econv <name> [min energy/10] [max energy/10]"
+        return 1
+    fi
+    
+    echo "This is meant to be run in the e_conv folder after you have a name.cell and a name.param file in the folder."
+    echo "The .param file must also have a cut_off_energy of 40 Ry."
+    echo "Is your setup correct? [y/n]"
+    read ans
+    if [[ $ans != 'y' ]]; then
+        return 1
+    fi
+    
+    name=$1
+    
+    min=4
+    max=10
+    if [[ $# == 3 ]]; then
+        min=$2
+        max=$3
+    fi
+    
+    make_subfolder_range $min $max
+    link_cells $name
+    dist_params $name
+    set_energies
+}
+
+function test_args() {
+    echo $#
+    echo $@
+}
+
+function test_read() {
+    read ans
+    echo $ans
+}
