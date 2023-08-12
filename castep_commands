@@ -45,6 +45,7 @@ function dist_params() {
 ## Set the appropriate cutoff energies in .param files 
 function set_energies() {
     for d in */; do
+        d=$(echo $d | tr -cd [:alnum:])
         sed -i "s/cut_off_energy  = 4/cut_off_energy  = $d/" $d/*.param
     done
 }
