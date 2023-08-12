@@ -53,8 +53,8 @@ function set_energies() {
 ## Combined:
 function setup_econv() {
     if [[ $# != 1 && $# != 3 ]] ; then
-        echo "Incorrect number of arguments passed!"
-        echo "Usage: setup_econv <name> [min energy/10] [max energy/10]"
+        echo "Incorrect number of arguments passed!" >&2
+        echo "Usage: setup_econv <name> [min energy/10] [max energy/10]" >&2
         return 1
     fi
     
@@ -81,12 +81,36 @@ function setup_econv() {
     set_energies
 }
 
-function test_args() {
-    echo $#
-    echo $@
-}
+# Run sbatch in all subdirs (takes submit file path)
+function sbatchall() {
+    currentdir="$PWD"
 
-function test_read() {
-    read ans
-    echo $ans
+    submitfile="$(readlink -f $1)"
+    partition="$2"
+
+    if [[ ! -f "$submitfile" ]]; then
+        echo "Submitfile ($submitfile) does not exist. Exiting..." >&2
+        return 1
+    fi 
+
+    unset dirs
+    for d in */; do
+        dir="$(readlink -f $d)"
+        if [[ "$dir" =~ ' ' || ! -d "$dir" ]]; then
+            echo "Problem with directory $dir. Exiting..." >&2
+            return 1
+        fi
+        dirs="$dirs $dir"
+    done
+
+    for d in $dirs; do
+        cd "$d"
+        if [[ -n "$partition" ]]; then
+            sbatch -p "$partition" "$submitfile"
+        else
+            sbatch "$submitfile"
+        fi
+    done
+    
+    cd "$currentdir"
 }
